@@ -23,7 +23,7 @@ RGBGFX  := ${RGBDS}rgbgfx
 ROM = bin/${ROMNAME}.${ROMEXT}
 
 # Argument constants
-INCDIRS  = src/ include/
+INCDIRS  = src/ src/include/
 WARNINGS = all extra
 ASFLAGS  = -p ${PADVALUE} $(addprefix -I,${INCDIRS}) $(addprefix -W,${WARNINGS})
 LDFLAGS  = -p ${PADVALUE}
@@ -56,12 +56,6 @@ rebuild:
 # This line causes assets not found in `assets/` to be also looked for in `src/assets/`.
 # "Source" assets can thus be safely stored there without `make clean` removing them!
 VPATH := src
-
-# Define how to compress files using the PackBits16 codec.
-# (The compressor script requires Python 3.)
-assets/%.pb16: src/tools/pb16.py assets/%
-	@${MKDIR_P} "${@D}"
-	$^ $@
 
 # How to build a ROM.
 # Notice that the build date is always refreshed.

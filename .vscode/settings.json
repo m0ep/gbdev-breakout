@@ -1,0 +1,8 @@
+{
+  "rgbdsz80.includePath": [
+      "src/",
+      "src/bin/",
+      "src/include/",
+      "src/assets/"
+  ],
+}

@@ -1,4 +1,5 @@
 INCLUDE "hardware.inc"
+INCLUDE "game.inc"
 	rev_Check_hardware_inc 4.0
 
 DEF BRICK_LEFT EQU $05
@@ -14,10 +15,7 @@ SECTION "Entry point", ROM0
 
 EntryPoint:
 
-WaitVBlank:
-	ld a, [rLY]
-	cp 144
-	jp c, WaitVBlank
+	WaitForVBlank
 
 	; Turn the LCD off
 	xor a
@@ -52,26 +50,36 @@ ClearOam:
 
 	; Copy the ball
 	ld de, Ball
-	ld hl, $8010
+	ld hl, $8020
 	ld bc, BallEnd - Ball
 	call MemCopy
 
 	; Init paddle sprite
 	ld hl, _OAMRAM
 	ld a, 128 + 16
-	ld [hl+], a 
+	ld [hl+], a
 	ld a, 16 + 8
-	ld [hl+], a 
+	ld [hl+], a
 	ld a, 0
-	ld [hl+], a 
-	ld [hl+], a 
+	ld [hl+], a
+	ld [hl+], a
+
+	; Init paddle sprite
+	ld a, 128 + 16
+	ld [hl+], a
+	ld a, 24 + 8
+	ld [hl+], a
+	ld a, 1
+	ld [hl+], a
+	ld a, 0
+	ld [hl+], a
 
 	; Init ball sprite
 	ld a, 100 + 16
 	ld [hl+], a
 	ld a, 32 + 8
 	ld [hl+], a
-	ld a, 1
+	ld a, 2
 	ld [hl+], a
 	ld a, 0
 	ld [hl+], a
@@ -101,30 +109,27 @@ Main:
 	ld a, [rLY]
 	cp 144
 	jp nc, Main
-WaitVBlank2:
-	ld a, [rLY]
-	cp 144
-	jp c, WaitVBlank2
 
+	WaitForVBlank
 
 	; Move ball
 	ld a, [wBallMomentumX]
 	ld b, a
-	ld a, [_OAMRAM + 5]
+	ld a, [_OAMRAM + 9]
 	add a, b
-	ld [_OAMRAM + 5], a
+	ld [_OAMRAM + 9], a
 
 	ld a, [wBallMomentumY]
 	ld b, a
-	ld a, [_OAMRAM + 4]
+	ld a, [_OAMRAM + 8]
 	add a, b
-	ld [_OAMRAM + 4], a
+	ld [_OAMRAM + 8], a
 
 BounceOnTop:
-	ld a, [_OAMRAM + 4]
+	ld a, [_OAMRAM + 8]
 	sub a, 16 + 1
 	ld c, a
-	ld a, [_OAMRAM + 5]
+	ld a, [_OAMRAM + 9]
 	sub a, 8
 	ld b, a
 	call GetTileByPixel
@@ -136,10 +141,10 @@ BounceOnTop:
 	ld [wBallMomentumY], a
 
 BounceOnRight:
-	ld a, [_OAMRAM + 4]
+	ld a, [_OAMRAM + 8]
 	sub a, 16
 	ld c, a
-	ld a, [_OAMRAM + 5]
+	ld a, [_OAMRAM + 9]
 	sub a, 8 - 1
 	ld b, a
 	call GetTileByPixel
@@ -151,10 +156,10 @@ BounceOnRight:
 	ld [wBallMomentumX], a
 
 BounceOnLeft:
-	ld a, [_OAMRAM + 4]
+	ld a, [_OAMRAM + 8]
 	sub a, 16
 	ld c, a
-	ld a, [_OAMRAM + 5]
+	ld a, [_OAMRAM + 9]
 	sub a, 8 + 1
 	ld b, a
 	call GetTileByPixel
@@ -166,10 +171,10 @@ BounceOnLeft:
 	ld [wBallMomentumX], a
 
 BounceOnBottom:
-	ld a, [_OAMRAM + 4]
+	ld a, [_OAMRAM + 8]
 	sub a, 16 - 1
 	ld c, a
-	ld a, [_OAMRAM + 5]
+	ld a, [_OAMRAM + 9]
 	sub a, 8
 	ld b, a
 	call GetTileByPixel
@@ -183,17 +188,17 @@ BounceDone:
 
 	ld a, [_OAMRAM]
 	ld b, a
-	ld a, [_OAMRAM + 4]
+	ld a, [_OAMRAM + 8]
 	add a, 3; Fix Ball dip into paddle
 	cp a, b
 	jp nz, PaddleBounceDone
-	ld a, [_OAMRAM + 5]; Ball X
+	ld a, [_OAMRAM + 9]; Ball X
 	ld b, a
 	ld a, [_OAMRAM + 1]; Paddle X
 	sub a, 8
 	cp a, b
 	jp nc, PaddleBounceDone
-	add a, 8 + 16
+	add a, 8 + 24
 	cp a, b
 	jp c, PaddleBounceDone
 
@@ -203,7 +208,7 @@ PaddleBounceDone:
 
 	call UpdateKeys
 
-CheckLeft: 
+CheckLeft:
 	ld a, [wCurKeys]
 	and a, PADF_LEFT
 	jp z, CheckRight
@@ -215,6 +220,8 @@ Left:
 	cp a, 15
 	jp z, Main
 	ld [_OAMRAM + 1], a
+	add a, 8
+	ld [_OAMRAM + 5], a
 	jp Main
 
 CheckRight:
@@ -222,11 +229,13 @@ CheckRight:
 	and a, PADF_RIGHT
 	jp z, Main
 Right:
-	ld a, [_OAMRAM + 1]
+	ld a, [_OAMRAM + 5]
 	inc a
 	; did we hit the edge?
 	cp a, 105
 	jp z, Main
+	ld [_OAMRAM + 5], a
+	sub a, 8
 	ld [_OAMRAM + 1], a
 	jp Main
 
@@ -425,7 +434,7 @@ Tiles:
 	dw `23232323
 	dw `33333333
 	; Paste your logo here:
-	
+
 TilesEnd:
 
 SECTION "Tilemap", ROM0
@@ -454,12 +463,21 @@ TilemapEnd:
 SECTION "Paddle", ROM0
 
 Paddle:
-    dw `13333331
-    dw `30000003
-    dw `13333331
+    dw `03333333
+    dw `30313111
+    dw `33303000
+    dw `33313111
+    dw `33323222
+    dw `03333333
     dw `00000000
     dw `00000000
-    dw `00000000
+
+		dw `33333330
+    dw `11111113
+    dw `00000003
+    dw `11111113
+    dw `22222223
+    dw `33333330
     dw `00000000
     dw `00000000
 PaddleEnd:
